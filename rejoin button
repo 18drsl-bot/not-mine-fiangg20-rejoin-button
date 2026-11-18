@@ -1,152 +1,78 @@
--- Integrated Rejoin by Bases (auto-execute compatible)
-
-if _G._IntegratedRejoinLoaded then
-    -- Optional: clean up previous instance before re-running
-    if _G._IntegratedRejoinCleanup then _G._IntegratedRejoinCleanup() end
-end
-_G._IntegratedRejoinLoaded = true
-
-local coreGui       = game:GetService("CoreGui")
+-- Integrated Rejoin by Bases
+local coreGui = game:GetService("CoreGui")
 local teleportService = game:GetService("TeleportService")
-local guiService    = game:GetService("GuiService")
-local players       = game:GetService("Players")
+local guiService = game:GetService("GuiService")
+local players = game:GetService("Players")
 local userInputService = game:GetService("UserInputService")
 
--- Clean up any previous run's GUI objects so re-execution doesn't stack buttons
-local function cleanupOld()
-    local rg = coreGui:FindFirstChild("RobloxGui")
-    if not rg then return end
-    local shield = rg:FindFirstChild("SettingsClippingShield")
-    local settingsShield = shield and shield:FindFirstChild("SettingsShield")
-    if not settingsShield then return end
-
-    local menuContainer = settingsShield:FindFirstChild("MenuContainer")
-    local page = menuContainer and menuContainer:FindFirstChild("Page")
-    local bottom = page and page:FindFirstChild("BottomButtonFrame")
-    local buttons = bottom and bottom:FindFirstChild("MenuButtons")
-
-    if buttons then
-        local old = buttons:FindFirstChild("MenuButtonContainer3")
-        if old and old.Name == "MenuButtonContainer3" then old:Destroy() end
-        local old4 = buttons:FindFirstChild("MenuButtonContainer4")
-        if old4 then
-            old4.Name = "MenuButtonContainer3"
-            old4.LayoutOrder = 3
-        end
-    end
-
-    local versionContainer = settingsShield:FindFirstChild("VersionContainer")
-    if versionContainer then
-        local lbl = versionContainer:FindFirstChild("IntegratedRejoinCreditLabel")
-        if lbl then lbl:Destroy() end
-    end
-end
-_G._IntegratedRejoinCleanup = cleanupOld
-cleanupOld()
-
 local function triggerRejoin()
-    pcall(function()
-        teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, players.LocalPlayer)
-    end)
+    teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, players.LocalPlayer)
 end
 
--- Keyboard shortcut: J while Roblox menu is open
 userInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.J and guiService:GetMenuIsOpen() then
+    if not processed and input.KeyCode == Enum.KeyCode.J and guiService.MenuIsOpen then
         triggerRejoin()
     end
 end)
-
 local creditLabel
-local connections = {}
 
 guiService.MenuOpened:Connect(function()
-    -- Give the GUI a moment to construct (auto-exec often fires before menu tree exists)
-    task.wait(0.15)
+    local bottomFrame = coreGui:FindFirstChild("RobloxGui"):FindFirstChild("SettingsClippingShield"):FindFirstChild("SettingsShield"):FindFirstChild("MenuContainer"):FindFirstChild("Page"):FindFirstChild("BottomButtonFrame"):FindFirstChild("MenuButtons")
+    local serverChannel = coreGui:FindFirstChild("RobloxGui"):FindFirstChild("SettingsClippingShield"):FindFirstChild("SettingsShield"):FindFirstChild("VersionContainer"):WaitForChild("ServerChannelLabel", true)
 
-    local rg = coreGui:FindFirstChild("RobloxGui")
-    if not rg then return end
-    local shield = rg:FindFirstChild("SettingsClippingShield")
-    local settingsShield = shield and shield:FindFirstChild("SettingsShield")
-    if not settingsShield then return end
+    if serverChannel then
+        creditLabel = serverChannel:Clone()
+        creditLabel.Name = "IntegratedRejoinCreditLabel"
+        creditLabel.Text = "Integrated Rejoin by <b><font color='#69aee5'>Bases</font></b>"
+        creditLabel.Size = UDim2.new(0, 156, 0, 26)
+        creditLabel.LayoutOrder = 7
+        creditLabel.RichText = true
+        creditLabel.Parent = serverChannel.Parent
+    end
 
-    local menuContainer = settingsShield:FindFirstChild("MenuContainer")
-    local page = menuContainer and menuContainer:FindFirstChild("Page")
-    local bottom = page and page:FindFirstChild("BottomButtonFrame")
-    local buttons = bottom and bottom:FindFirstChild("MenuButtons")
-    if not buttons then return end
+    local templateButton = bottomFrame:FindFirstChild("MenuButtonContainer1") or bottomFrame:FindFirstChild("MenuButtonContainer2")
 
-    -- --- Credit label ---
-    local versionContainer = settingsShield:FindFirstChild("VersionContainer")
-    if versionContainer then
-        local existing = versionContainer:FindFirstChild("IntegratedRejoinCreditLabel")
-        if existing then existing:Destroy() end
-
-        local serverChannel = versionContainer:FindFirstChild("ServerChannelLabel", true)
-        if serverChannel then
-            creditLabel = serverChannel:Clone()
-            creditLabel.Name = "IntegratedRejoinCreditLabel"
-            creditLabel.Text = "Integrated Rejoin by <b><font color='#69aee5'>Bases</font></b>"
-            creditLabel.Size = UDim2.new(0, 156, 0, 26)
-            creditLabel.LayoutOrder = 7
-            creditLabel.RichText = true
-            creditLabel.Parent = serverChannel.Parent
+    if templateButton then
+        local existingContainer = bottomFrame:FindFirstChild("MenuButtonContainer3")
+        if existingContainer then
+            existingContainer.LayoutOrder = 4
+            existingContainer.Name = "MenuButtonContainer4"
         end
+
+        local rejoinButton = templateButton:Clone()
+        rejoinButton.Name = "MenuButtonContainer3"
+        rejoinButton.LayoutOrder = 3
+        
+        local textLabel = rejoinButton:FindFirstChildWhichIsA("TextLabel", true)
+        if textLabel then
+            textLabel.Text = "Rejoin"
+        end
+        
+        local hint = rejoinButton:FindFirstChild("Hint", true)
+        if hint then
+            hint.Image = "rbxassetid://109358602604497"
+            hint.ImageRectOffset = Vector2.new(0, 0)
+            hint.ImageRectSize = Vector2.new(0, 0)
+        end
+
+        rejoinButton.MenuButton.MouseEnter:Connect(function()
+            rejoinButton.MenuButton.Transparency = 0.81
+        end)
+
+        rejoinButton.MenuButton.MouseLeave:Connect(function()
+            rejoinButton.MenuButton.Transparency = 0.88
+        end)
+
+        local clickableAction = rejoinButton:IsA("GuiButton") and rejoinButton or rejoinButton:FindFirstChildWhichIsA("GuiButton", true)
+        
+        if clickableAction then
+            clickableAction.MouseButton1Click:Connect(triggerRejoin)
+        end
+
+        rejoinButton.Parent = bottomFrame
     end
-
-    -- --- Rejoin button ---
-    local templateButton = buttons:FindFirstChild("MenuButtonContainer1")
-        or buttons:FindFirstChild("MenuButtonContainer2")
-    if not templateButton then return end
-
-    -- Shift existing 3rd container out of the way (make room for ours)
-    local existingContainer = buttons:FindFirstChild("MenuButtonContainer3")
-    if existingContainer and existingContainer.Name ~= "IntegratedRejoinBtn" then
-        existingContainer.LayoutOrder = 4
-        existingContainer.Name = "MenuButtonContainer4"
-    end
-
-    local rejoinButton = templateButton:Clone()
-    rejoinButton.Name = "IntegratedRejoinBtn"
-    rejoinButton.LayoutOrder = 3
-
-    local textLabel = rejoinButton:FindFirstChildWhichIsA("TextLabel", true)
-    if textLabel then textLabel.Text = "Rejoin" end
-
-    local hint = rejoinButton:FindFirstChild("Hint", true)
-    if hint then
-        hint.Image = "rbxassetid://109358602604497"
-        hint.ImageRectOffset = Vector2.new(0, 0)
-        hint.ImageRectSize  = Vector2.new(0, 0)
-    end
-
-    local menuButton = rejoinButton:FindFirstChild("MenuButton", true)
-    if menuButton then
-        table.insert(connections, menuButton.MouseEnter:Connect(function()
-            menuButton.Transparency = 0.81
-        end))
-        table.insert(connections, menuButton.MouseLeave:Connect(function()
-            menuButton.Transparency = 0.88
-        end))
-    end
-
-    local clickable = rejoinButton:IsA("GuiButton") and rejoinButton
-        or rejoinButton:FindFirstChildWhichIsA("GuiButton", true)
-    if clickable then
-        table.insert(connections, clickable.MouseButton1Click:Connect(triggerRejoin))
-    end
-
-    rejoinButton.Parent = buttons
 end)
 
 guiService.MenuClosed:Connect(function()
-    -- Safe teardown
-    if creditLabel then
-        pcall(function() creditLabel:Destroy() end)
-        creditLabel = nil
-    end
-    for _, c in ipairs(connections) do
-        pcall(function() c:Disconnect() end)
-    end
-    table.clear(connections)
+    creditLabel:Destroy()
 end)
